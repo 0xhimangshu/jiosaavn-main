@@ -36,3 +36,10 @@ class HttpClient:
                 return json.loads(await response.text())
             except json.JSONDecodeError:
                 raise ValueError("Failed to parse JSON response")
+            
+    
+    async def get_buffer(self, url: str) -> bytes:
+        async with self.session.get(url) as response:
+            if response.status != 200:
+                raise aiohttp.ClientError(f"Failed to fetch data: {response.status}")
+            return await response.read()
