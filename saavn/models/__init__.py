@@ -1,4 +1,4 @@
-from .track import Track
 from .album import Album
-from .search import SearchResult
+from .artist import Artist
 from .playlist import Playlist
+from .track import Track
