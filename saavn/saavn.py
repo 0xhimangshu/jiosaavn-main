@@ -6,7 +6,7 @@ from urllib.parse import quote
 import asyncio
 
 from .client import HttpClient
-from .models import Album, SearchResult, Track
+from .models import Album, SearchResult, Track, Playlist
 from .routes import Route
 
 logging.basicConfig(level=logging.INFO)
@@ -131,5 +131,30 @@ class Saavn:
                 tracks = await asyncio.gather(*tasks)
                 return Album(data=response, tracks=tracks)
 
-    async def get_playlist(self, playlist_id: str, as_dict: bool = False) -> dict:
-        ...
+    async def get_playlist(self, playlist_id: str, as_dict: bool = False):
+        """
+        Retrieves playlist details and associated tracks concurrently.
+        
+        Parameters
+        ----------
+        playlist_id : str
+            - The ID of the playlist to retrieve. (example: 125656, 134976)
+
+        Returns
+        -------
+        Playlist
+            - Playlist with track details, fetched concurrently.
+        """
+        
+        route = Route("playlists", listid=playlist_id)
+        async with HttpClient(headers=self.headers) as client:
+            response = await client.get(route.url)
+            if as_dict:
+                return response
+            else:
+                tracks = []
+                for song in response["songs"]:
+                    song["media_url"] = await self.get_media_url(song["encrypted_media_url"])
+                    tracks.append(Track(data=song))
+                    
+                return Playlist(data=response, tracks=tracks)
