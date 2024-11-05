@@ -1,6 +1,3 @@
-
-
-
 class Track:
     def __init__(self, data: dict):
         self.data = data
@@ -11,11 +8,21 @@ class Track:
     
     @property
     def title(self) -> str:
-        return self.data['title']
+        if self.data.get("title"):
+            return self.data["title"]
+        elif self.data.get("song"):
+            return self.data.get("song")
+        else:
+            return None
 
     @property
     def url(self) -> str:
-        return self.data['url'] 
+        if self.data.get("perma_url"):
+            return self.data["perma_url"]
+        elif self.data.get("url"):
+            return self.data.get("url")
+        else:
+            return None
     
     @property
     def image(self) -> str:
