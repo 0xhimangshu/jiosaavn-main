@@ -1,3 +1,6 @@
+from typing import List
+from .artist import Artist
+
 class Track:
     def __init__(self, data: dict):
         self.data = data
@@ -44,7 +47,22 @@ class Track:
     def media_url(self) -> str:
         return self.data['media_url'].split("?")[0].replace("ac.cf", "aac")
     
+    @property
+    def author(self) -> str:
+        return Artist(data=self.data["more_info"]["artistMap"]["primary_artist"][0], tracks=None)
 
+    @property
+    def artists(self):
+        if self.data["more_info"]["artistMap"].get("artists"):
+            artists = [
+                Artist(data=artist ,  tracks=None) 
+                for artist in self.data["more_info"]["artistMap"]["artists"]
+            ]
+            return artists
+        else:
+            return self.author
+
+    
     @property
     def as_json(self) -> dict:
         return self.data

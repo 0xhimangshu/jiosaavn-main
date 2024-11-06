@@ -57,7 +57,7 @@ class Saavn:
                 raise ValueError("Failed to fetch buffer")
             return response
 
-    async def _search_tracks(self, query: str, pages: int = 5, count: int = 5) -> List[Track]:
+    async def _search_tracks(self, query: str, as_dict: bool = False, pages: int = 5, count: int = 5) -> List[Track]:
         """
         Searches for tracks, up to a specified number of pages
         
@@ -74,23 +74,30 @@ class Saavn:
             - List of tracks
         """
         async with HttpClient(headers=self.headers) as client:
-            # Fetch search results concurrently across pages, limited by max_pages
             tasks = [client.get(Route("search", query=query, page=i).url) for i in range(1, pages + 1)]
             responses = await asyncio.gather(*tasks)
 
             tracks = []
             media_url_tasks = []
+
+            if as_dict:
+                for response in responses:
+                    if response.get("results") == []:
+                        raise ValueError("No results found")
+                    tracks.append(response)
+                return tracks
+            
+            
             for response in responses:
+                
                 if response.get("results") == []:
                     break
                 for song in response.get("results", []):
-                    # Schedule concurrent media URL fetches, with a limit
                     media_url_tasks.append(
                         self.get_media_url(song["more_info"]["encrypted_media_url"])
                     )
                     tracks.append(Track(data=song))
 
-            # Fetch media URLs concurrently with controlled concurrency
             media_urls = await asyncio.gather(*media_url_tasks)
             for track, media_url in zip(tracks, media_urls):
                 track.data["media_url"] = media_url
@@ -123,17 +130,25 @@ class Saavn:
         """
         if query.startswith("https://www.jiosaavn.com/"):
             if "album" in query:
+                if as_dict:
+                    return await self.get_album(query, as_dict=True)
                 return await self.get_album(query)
             elif "playlist" in query:
+                if as_dict:
+                    return await self.get_playlist(query, as_dict=True)
                 return await self.get_playlist(query)
             elif "artist" in query:
+                if as_dict:
+                    return await self.get_artist(query, as_dict=True)
                 return await self.get_artist(query)
             elif "song" in query:
+                if as_dict:
+                    return await self.get_track(query, as_dict=True)
                 return await self.get_track(query)
         else:
             pages=kwargs.get("page", 1)
             count=kwargs.get("count", 5)
-            return await self._search_tracks(query, pages=pages, count=count)
+            return await self._search_tracks(query, as_dict=as_dict, pages=pages, count=count)
 
 
 

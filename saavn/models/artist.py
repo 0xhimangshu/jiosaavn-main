@@ -4,7 +4,7 @@ from .album import Album
 from .playlist import Playlist
 
 class Artist:
-    def __init__(self, data: dict, tracks: List[Track]):
+    def __init__(self, data: dict, tracks: List[Track] = None):
         self.data = data
         self._tracks = tracks
 
@@ -18,7 +18,7 @@ class Artist:
     
     @property
     def image(self) -> str:
-        return self.data['image']
+        return self.data.get("image", None)
     
     @property
     def url(self) -> str:
