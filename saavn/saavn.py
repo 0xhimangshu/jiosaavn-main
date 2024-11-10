@@ -3,7 +3,7 @@ import json
 import logging
 import random
 from functools import wraps
-from typing import List
+from typing import List, Union
 from urllib.parse import quote
 
 from .client import HttpClient
@@ -19,6 +19,7 @@ USER_AGENTS = [
     "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0",
 ]
 
+
 class Saavn:
     def __init__(self):
         self.headers = {
@@ -31,25 +32,26 @@ class Saavn:
             "Sec-Fetch-Mode": "cors",
             "Sec-Fetch-Site": "same-origin",
         }
-        
+
     def _extract_id(self, url_or_id: str) -> str:
         if "https" or "http" in url_or_id or "/" in url_or_id:
             return url_or_id.split("/")[-1]
-        return url_or_id  
+        return url_or_id
 
     def extract_id(func):
         @wraps(func)
         def wrapper(self, url_or_id: str, *args, **kwargs):
             id_or_token = self._extract_id(url_or_id)
             return func(self, id_or_token, *args, **kwargs)
+
         return wrapper
-    
+
     async def get_media_url(self, enc_url: str):
         async with HttpClient(headers=self.headers) as client:
             route = Route("token", url=quote(enc_url), bitrate="320")
-            response = await client.post(route.url)
+            response = await client.post(route)
             return response["auth_url"]
-        
+
     async def get_buffer(self, track: Track):
         async with HttpClient() as client:
             response = await client.get_buffer(track.media_url)
@@ -57,10 +59,12 @@ class Saavn:
                 raise ValueError("Failed to fetch buffer")
             return response
 
-    async def _search_tracks(self, query: str, as_dict: bool = False, pages: int = 5, count: int = 5) -> List[Track]:
+    async def _search_tracks(
+        self, query: str, as_dict: bool = False, pages: int = 5, count: int = 5
+    ) -> List[Track]:
         """
         Searches for tracks, up to a specified number of pages
-        
+
         Parameters
         ----------
         query : str
@@ -74,7 +78,10 @@ class Saavn:
             - List of tracks
         """
         async with HttpClient(headers=self.headers) as client:
-            tasks = [client.get(Route("search", query=query, page=i).url) for i in range(1, pages + 1)]
+            tasks = [
+                client.get(Route("search", query=query, page=i))
+                for i in range(1, pages + 1)
+            ]
             responses = await asyncio.gather(*tasks)
 
             tracks = []
@@ -86,10 +93,9 @@ class Saavn:
                         raise ValueError("No results found")
                     tracks.append(response)
                 return tracks
-            
-            
+
             for response in responses:
-                
+
                 if response.get("results") == []:
                     break
                 for song in response.get("results", []):
@@ -103,7 +109,7 @@ class Saavn:
                 track.data["media_url"] = media_url
 
             return tracks[:count]
-        
+
     async def search(self, query: str, as_dict: bool = False, **kwargs):
         """
         Searches for tracks, albums, artists and playlists
@@ -146,17 +152,17 @@ class Saavn:
                     return await self.get_track(query, as_dict=True)
                 return await self.get_track(query)
         else:
-            pages=kwargs.get("page", 1)
-            count=kwargs.get("count", 5)
-            return await self._search_tracks(query, as_dict=as_dict, pages=pages, count=count)
-
-
+            pages = kwargs.get("page", 1)
+            count = kwargs.get("count", 5)
+            return await self._search_tracks(
+                query, as_dict=as_dict, pages=pages, count=count
+            )
 
     @extract_id
     async def get_track(self, track: str, as_dict: bool = False):
         """
         Retrieves track details and media URL.
-        
+
         Parameters
         ----------
         track_id : str
@@ -168,18 +174,19 @@ class Saavn:
             - Track with media URL.
         """
         async with HttpClient(headers=self.headers) as client:
-            route = Route("details", type="song" ,token=track)
-            response = await client.get(route.url)
-            media_url = await self.get_media_url(response["songs"][0]["more_info"]["encrypted_media_url"])
+            route = Route("details", type="song", token=track)
+            response = await client.get(route)
+            media_url = await self.get_media_url(
+                response["songs"][0]["more_info"]["encrypted_media_url"]
+            )
             response["songs"][0]["media_url"] = media_url
             return response if as_dict else Track(data=response["songs"][0])
-        
-        
+
     @extract_id
     async def get_album(self, album: str, as_dict: bool = False):
         """
         Retrieves album details and associated tracks concurrently.
-        
+
         Parameters
         ----------
         album : str
@@ -192,14 +199,16 @@ class Saavn:
         """
         route = Route("details", type="album", token=album)
         async with HttpClient(headers=self.headers) as client:
-            response = await client.get(route.url)
+            response = await client.get(route)
             if as_dict:
                 return response
             else:
                 tracks = []
                 if response.get("list"):
                     for song in response.get("list"):
-                        media_url = await self.get_media_url(song["more_info"]["encrypted_media_url"])
+                        media_url = await self.get_media_url(
+                            song["more_info"]["encrypted_media_url"]
+                        )
                         song["media_url"] = media_url
                         tracks.append(Track(data=song))
 
@@ -209,7 +218,7 @@ class Saavn:
     async def get_artist(self, artist: str, as_dict: bool = False):
         """
         Retrieves artist details and associated tracks concurrently.
-        
+
         Parameters
         ----------
         artist : str
@@ -222,48 +231,71 @@ class Saavn:
         """
         route = Route("details", type="artist", token=artist)
         async with HttpClient(headers=self.headers) as client:
-            response = await client.get(route.url)
-            
+            response = await client.get(route)
+
             if as_dict:
                 return response
             else:
                 tracks = []
-                if response.get("topSongs"): # currently only top songs , in the future we can add all songs (check json response for more info) 
+                if response.get(
+                    "topSongs"
+                ):  # currently only top songs , in the future we can add all songs (check json response for more info)
                     for song in response.get("topSongs"):
-                        media_url = await self.get_media_url(song["more_info"]["encrypted_media_url"])
+                        media_url = await self.get_media_url(
+                            song["more_info"]["encrypted_media_url"]
+                        )
                         song["media_url"] = media_url
                         tracks.append(Track(data=song))
 
                 return Artist(data=response, tracks=tracks)
-            
-            
+
     @extract_id
     async def get_playlist(self, playlist: str, as_dict: bool = False):
         """
         Retrieves playlist details and associated tracks concurrently.
-        
+
         Parameters
         ----------
         playlist : str
-            - The ID or URL of the playlist to retrieve. (example: 125656, 134976)
+            - The ID or URL of the playlist to retrieve. (example: 125656, https://www.jiosaavn.com/s/playlist/d106d3c2d80b4702585f0e1a41098fd4/test/PCXplErt,39xWb5,FqsjKg__)
 
         Returns
         -------
         Playlist
             - Playlist with track details, fetched concurrently.
         """
-        
+
         route = Route("details", type="playlist", token=playlist)
         async with HttpClient(headers=self.headers) as client:
-            response = await client.get(route.url)
+            response = await client.get(route)
             if as_dict:
                 return response
             else:
                 tracks = []
                 if response.get("list"):
                     for song in response.get("list"):
-                        media_url = await self.get_media_url(song["more_info"]["encrypted_media_url"])
+                        media_url = await self.get_media_url(
+                            song["more_info"]["encrypted_media_url"]
+                        )
                         song["media_url"] = media_url
                         tracks.append(Track(data=song))
 
                 return Playlist(data=response, tracks=tracks)
+
+    async def get_recommendations(self, pid: str | Track) -> List[Track]:
+        # check a track response as dict for pid
+        async with HttpClient(headers=self.headers) as client:
+            if isinstance(pid, Track):
+                pid = pid.pid
+
+            route = Route("recomend", pid=pid)
+            response = await client.get(route)
+            tracks: List[Track] = []
+            if type(response) == list:
+                for song in response:
+                    media_url = await self.get_media_url(
+                        song["more_info"]["encrypted_media_url"]
+                    )
+                    song["media_url"] = media_url
+                    tracks.append(Track(data=song))
+                return tracks

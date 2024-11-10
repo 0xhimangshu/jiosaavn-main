@@ -1,5 +1,6 @@
 from typing import Any
 
+
 class Route:
     BASE_URL = "https://www.jiosaavn.com/api.php"
     ENDPOINTS = {
@@ -8,7 +9,9 @@ class Route:
         "lyrics": "?__call=lyrics.getLyrics&ctx=web6dot0&api_version=4&_format=json&_marker=0%3F_marker%3D0&lyrics_id={lyrics_id}",
         "token": "?__call=song.generateAuthToken&api_version=4&_format=json&ctx=web6dot0&_marker=0%3F_marker%3D0&url={url}&bitrate={bitrate}",
         "details": "?__call=webapi.get&includeMetaTags=0&ctx=web6dot0&api_version=4&_format=json&_marker=0%3F_marker%3D0&type={type}&token={token}",
+        "recomend": "?__call=reco.getreco&api_version=4&_format=json&_marker=0&ctx=web6dot0&language=english&pid={pid}",
     }
+
     def __init__(self, endpoint: str, **params: Any):
         self.url = self.build_url(endpoint, **params)
 

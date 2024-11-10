@@ -1,21 +1,19 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="saavn", 
-    version="0.1.0",  
-    author="0xhimangshu", 
-    author_email="saikiahimangshu@gmail.com",  
+    name="saavn",
+    version="0.1.0",
+    author="0xhimangshu",
+    author_email="saikiahimangshu@gmail.com",
     description="A Python client for the JioSaavn API",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/0xhimangshu/jiosaavn-main",
     packages=find_packages(exclude=["tests", "tests.*"]),
-    install_requires=[
-        "aiohttp"
-    ],
+    install_requires=["aiohttp"],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",  
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     python_requires=">=3.7",
