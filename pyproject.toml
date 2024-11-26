@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saavn.py"
-version = "0.1.2"
+version = "0.1.3"
 authors = [
     { name="0xhimangshu", email="saikiahimangshu1256@gmail.com" },
 ]
@@ -20,6 +20,7 @@ dependencies = [
     "httpx",
     "rich", 
     "pynput",
+    "h2",
 ]
 
 [project.urls]
